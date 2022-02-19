@@ -146,7 +146,7 @@ function suitRating(player) {
     return suitRating
 }
 
-function autoBid(player, deal) {
+function autoBid(order, deal) {
 
     /*
         See suitRating for additional details.
@@ -184,43 +184,83 @@ function autoBid(player, deal) {
         }
     }
 
-    var partner = whoIsMyPartner(player);
-    // console.log(`Player: ${player}, Partner: ${partner}`);
-
-    if (deal['bid'][partner] !== undefined) {
-        var partnerBid = deal['bid'][partner]
-    } else {
-        var partnerBid
+    function hiValue(bidOpts) {
+        return Math.max(...Object.values(bidOpts))
     }
 
-    console.log(partnerBid);
+    function bidOptions(suitRatings, hasJoker) {
 
-    var myBid = new Object()
-    var suit
-    var hiVal
-    if (partnerBid == undefined) {
-        // I'm first bidder on team
-        let bidOpts = new Array()
-        for (var sr in deal['suit_ratings'][player]) {
-            let myBidval = Math.max(deal['suit_ratings'][player][sr])
-            deal[player].forEach(function(card) {
-                if (card.Value == "Joker") {
-                    myBidval += 10
-                }
-            })
+        var bidOpts = new Array()
+        for (var sr in suitRatings) {
+            var myBidval = Math.max(suitRatings[sr])
+            if (hasJoker) {
+                myBidval += 10
+            }
             bidOpts[sr] = myBidval
         }
-        hiVal = Math.max(...Object.values(bidOpts))
-        for (var bid in bidOpts) {
-            if (bidOpts[bid] == hiVal) {
-                suit = bid
-            }
-        }
+
+        return bidOpts
     }
 
-    deal['bid'][player] = {
-        [suit]: converter(hiVal)
-    }
+    order.forEach(function(player) {
+        console.log(`[${player}]: STARTING AUTOBID`)
+        var partner = whoIsMyPartner(player);
+
+        console.log(`[${player}]: partner is ${partner}`);
+
+        if (deal['bid'][partner] !== undefined) {
+            var partnerBid = deal['bid'][partner]
+            console.log(`[${player}]: partner has bid ${partnerBid.Suit},${partnerBid.Value}`);
+        } else {
+            var partnerBid
+        }
+
+        // detect Joker
+        var hasJoker
+        if (deal[player].filter(element => element.Value === 'Joker').length > 0) {
+            console.log(`[${player}]: has Joker!`)
+            hasJoker = true
+        } else {
+            hasJoker = false
+        }
+
+        var suit
+        var hiVal
+        if (partnerBid == undefined) {
+            // I'm first bidder on team
+            console.log(`[${player}]: is first bidder for their team.`)
+
+            var bidOpts = bidOptions(deal['suit_ratings'][player], hasJoker)
+            var hiVal = hiValue(bidOpts)
+
+            for (var bid in bidOpts) {
+                if (bidOpts[bid] == hiVal) {
+                    suit = bid
+                }
+            }
+
+            console.log(`[${player}]: bidding ${suit}: ${converter(hiVal)}`)
+
+            deal['bid'][player] = {
+                Suit: suit,
+                Value: converter(hiVal)
+            }
+
+        } else {
+            console.log(`[${player}]: Processing ${partnerBid}...`)
+                // var bidOpts = bidOptions(deal['suit_ratings'][player])
+                // var hiVal = hiValue(bidOpts)
+            suit = 'clubs'
+            hiVal = 10
+            deal['bid'][player] = {
+                Suit: suit,
+                Value: converter(hiVal)
+            }
+        }
+
+
+    });
+    console.log(deal['bid'])
 }
 
 
@@ -243,12 +283,8 @@ function testit() {
 
     deal['bid'] = new Array();
     let playerOrder = new Array('player2', 'player3', 'player4', 'player1');
-    playerOrder.forEach(function(turn) {
-        let bid = autoBid(turn, deal)
-    });
-
+    autoBid(playerOrder, deal);
     //
-    console.log(deal)
 }
 
 testit()
